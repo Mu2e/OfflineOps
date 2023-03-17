@@ -1,0 +1,35 @@
+#! /bin/bash
+#
+# fix environment and python for pushOutput.py
+# which writes files to dcache and declares them to SAM
+#
+SCRIPT_DIR=$( dirname "${BASH_SOURCE[0]}" )
+
+#unset LD_LIBRARY_PATH
+#unset LD_PRELOAD
+#unset GFAL_PLUGIN_DIR
+# unset GFAL_CONFIG_DIR
+#unset PYTHONHOME
+#unset PYTHONPATH
+
+#[ -z "$MU2E" ] && 
+source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
+#setup python v3_9_13
+[ -z "$MUSE_WORK_DIR" ] && muse setup Offline
+[ -z "$SETUP_MU2ETOOLS" ] && setup mu2etools
+setup sam_web_client
+#setup root v6_26_06 -q e20:p3913:prof
+# for gfal2
+export PYTHONPATH=$PYTHONPATH:/usr/lib64/python3.6/site-packages:/usr/lib/python3.6/site-packages
+export SAMWEB_HTTP_HANDLER=urllib
+which python
+python $SCRIPT_DIR/../Util/pushOutput.py "$@"
+
+
+# simpler working method
+#unset LD_LIBRARY_PATH
+#unset LD_PRELOAD
+#unset GFAL_PLUGIN_DIR
+#unset PYTHONHOME
+#export PYTHONPATH=/cvmfs/fermilab.opensciencegrid.org/products/common/db/../prd/sam_web_client/v3_2/NULL/python
+#/usr/bin/python2 $SCRIPT_DIR/../Util/pushOutput.py "$@"
