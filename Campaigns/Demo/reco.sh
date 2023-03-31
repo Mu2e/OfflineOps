@@ -102,6 +102,9 @@ if [ $RCT -ne 0 ]; then
 fi
 echo "$LOCTXT $LGFN none" >> output.txt
 
+tee_date "Final ls"
+ls -l
+
 [[ "$MOO_FAIL" && $((RANDOM%400)) -lt $MOO_FAIL ]] && exit 1
 
 control_summary final
