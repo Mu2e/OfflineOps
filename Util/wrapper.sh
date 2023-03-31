@@ -15,6 +15,15 @@ source /cvmfs/mu2e.opensciencegrid.org/bin/OfflineOps/functions.sh
 
 tee_date Starting OfflineOps/wrapper.sh
 
+# always need to find setup
+source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
+
+
+if [ "$MOO_WATCHDOG" ]; then
+    tee_date Starting watchdog
+    watchdog &
+fi
+
 [ -z "$MOO_VERBOSE" ] && export MOO_VERBOSE=1
 node_summary $MOO_VERBOSE
 
@@ -28,7 +37,6 @@ save_environment wrapper_start
 #
 if [[ "$MOO_SOURCE" =~ "/" ]]; then
     tee_date fetching Offline Ops from $MOO_SOURCE
-    source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
     setup ifdhc
     LFN=$(basename $MOO_SOURCE)
     ifdh cp --cp_maxretries=1 $MOO_SOURCE $LFN
@@ -54,8 +62,8 @@ if [ "$PRODUCTS" ]; then
         TODO=$(ups active | \
             awk '{if($1!="Active" && $1!="ups" && ff==0) {print $1; ff=1;}}' )
     done
-    unsetup ups
-    unset PRODUCTS
+    #unsetup ups
+    #unset PRODUCTS
 fi
 
 tee_date "mv CONDOR_DIR_INPUT to cwd"
@@ -68,6 +76,7 @@ fi
 
 
 tee_date setup OfflineOps $MOO_SOURCE
+
 if [[ "$MOO_SOURCE" =~ "/" ]]; then
     source OfflineOps/Util/setup.sh
 else
@@ -77,8 +86,13 @@ fi
 #
 # create a config string out of POMS, cfg and input versions
 #
-export MOO_CAMPAIGN=$POMS4_CAMPAIGN_NAME
-export MOO_CAMPAIGN_STAGE=$POMS4_CAMPAIGN_STAGE_NAME
+if [[ -z "$MOO_CAMPAIGN" && -n "$POMS4_CAMPAIGN_NAME" ]]; then
+    export MOO_CAMPAIGN="$POMS4_CAMPAIGN_NAME"
+fi
+if [[ -z "MOO_CAMPAIGN_STAGE" && -n "POMS4_CAMPAIGN_STAGE_NAME" ]]; then
+    export MOO_CAMPAIGN_STAGE=$POMS4_CAMPAIGN_STAGE_NAME
+fi
+
 create_config
 
 save_environment wrapper_end

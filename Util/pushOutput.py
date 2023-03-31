@@ -136,7 +136,7 @@ def fillDataFile(line):
         print("processing: " +  line, end="")
 
     dfile = DataFile()
- 
+
     aa = line.split()
     aa = [ x.strip() for x in aa ]
     if len(aa) <2 :
@@ -311,7 +311,7 @@ def getSamMetadata(dfile):
         dfile.samtime = -1
         return 2
 
-        
+
     dd = json.loads(rec)
     dfile.locations = dd.pop("locations",[])
     dfile.samInfo = dd
@@ -530,7 +530,7 @@ def createMetadata(dfile):
         return 2
 
     ext = dfile.fn.split()[-1]
-    
+
     cmd = ""
     if dfile.parents == "" or dfile.parents == "none" :
         cmd = cmd+"printJson --no-parents "+dfile.localfs+" 2> err.txt"
@@ -540,7 +540,7 @@ def createMetadata(dfile):
 
     try:
         jsontext = subprocess.check_output(cmd,shell=True,\
-            stderr=subprocess.STDOUT,timeout=300,text=True)
+            stderr=subprocess.STDOUT,timeout=600,text=True)
     except Exception as e:
         teeDate(0,"ERROR - printJson failed for "+dfile.fn
                 +"\nmessage: "+str(e))
@@ -619,8 +619,8 @@ def declareSam(dfile):
 
 
 #
-# returns success, all output was either written by this process or 
-# there is no output, or the previous output was old, ready to recover (0), 
+# returns success, all output was either written by this process or
+# there is no output, or the previous output was old, ready to recover (0),
 # there is a recent output from a previous run (1), or a failure (2)
 #
 
@@ -661,7 +661,7 @@ def checkTimes(dfile):
 
         # if rc==1 then, no output file, continue to check SAM
 
-    # if flow comes here, the file was written by this process, 
+    # if flow comes here, the file was written by this process,
     # was not there, or was old, i.e. OK to recover
 
     if dfile.donesam :
@@ -807,7 +807,7 @@ if __name__ == '__main__':
     verbose = 1
     retries = [0,10,30]
     runTime = int( time.time() )
-    recoverDelay = 30
+    recoverDelay = 7200
 
     # gfal2 and samweb functions are methods of global objects
     ctx = gfal2.creat_context()
@@ -820,7 +820,7 @@ if __name__ == '__main__':
     appVersion=None
 
     # intentionaly fail at a rate given by MOO_FAIL/100
-    failrate = 0.0
+    failRate = 0.0
     if 'MOO_FAIL' in os.environ :
         failRate = float(os.environ["MOO_FAIL"])/100.0
 
@@ -830,10 +830,10 @@ if __name__ == '__main__':
 
     parser.add_argument("filelist", metavar="file_of_files",
                         type=str, help="text file with list of files to transfer")
-    parser.add_argument("-v","--verbose", action="store_const", 
+    parser.add_argument("-v","--verbose", action="store_const",
                         dest="verbose", default=1,const=None,
                         help="int, 0,1,2 for verbosity (default=1)")
-    parser.add_argument("-a","--app_default", action="store_const", 
+    parser.add_argument("-a","--app_default", action="store_const",
                         dest="app_default", default=True, const=None,
                         help="True/False take app name, version from $MOO_CONFIG")
 
@@ -911,7 +911,7 @@ if __name__ == '__main__':
             rcCheck = checkTimes(dfile)
             if rcCheck != 0 :
                 break
-        
+
         rcRecover = 0
         if rcCheck == 1 :
             # recent files from another job exist
@@ -949,4 +949,3 @@ if __name__ == '__main__':
             writeLog(dfile)
 
     sys.exit(rcJob)
-

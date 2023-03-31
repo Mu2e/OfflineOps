@@ -17,14 +17,13 @@ source /cvmfs/mu2e.opensciencegrid.org/bin/OfflineOps/functions.sh
 tee_date "Starting CRVWB reco.sh"
 tee_date "args are: $@"
 
-source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups
 setup mu2e
 setup CRVTeststand $MOO_CRVTESTSTAND
+muse setup Offline v10_20_00
+setup -B mu2etools
 setup -B mu2efiletools
 setup -B sam_web_client
 setup -B ifdhc
-
-printenv | grep SAM
 
 # modify CRV exe control to use local directory
 cat $CRVTESTSTAND_FQ_DIR/config.txt | \
@@ -61,8 +60,6 @@ do
     ifdh cp $MOO_INPUT $BNAME
     RCT=$((RCT+$?))
 
-    [ $RCT -ne 0 ] && break
-
     DES=$(echo $BNAME | awk -F. '{print $3}' )
     CFG=$(echo $BNAME | awk -F. '{print $4}' )
     SEQ=$(echo $BNAME | awk -F. '{print $5}' )
@@ -77,6 +74,8 @@ do
     RPFN=etc.mu2e.${DES}_reco.${MOO_CONFIG}.${SEQ}.pdf
     RTFN=etc.mu2e.${DES}_reco.${MOO_CONFIG}.${SEQ}.txt
 
+    [ $RCT -ne 0 ] && break
+
     if [ "$MOO_FAKE" ]; then
         date > ntd.mu2e.${DES}.${CFG}.${SEQ}.root
         date > cal.mu2e.${DES}.${CFG}.${SEQ}.pdf
@@ -85,13 +84,20 @@ do
         date > rec.mu2e.${DES}.${CFG}.${SEQ}.pdf
         date > rec.mu2e.${DES}.${CFG}.${SEQ}.txt
     else
+
+        tee_date "Running parseCrv $SEQ"
         parserCrv $SEQ
         RCT=$((RCT+$?))
 
+        tee_date "Running calibCrv $SEQ"
         calibCrv $SEQ
         RCT=$((RCT+$?))
 
-        recoCrv $SEQ -p
+        FLAG=""
+        [[ "$BNAME" =~ "crvled" ]] && FLAG="-p"
+
+        tee_date "Running recoCrv $SEQ $FLAG"
+        recoCrv $SEQ $FLAG
         RCT=$((RCT+$?))
     fi
 
@@ -120,18 +126,17 @@ do
 done
 
 tee_date "Done file loop, RCT=$RCT"
+tee_date "Processed files: $MOO_INPUT_LIST"
 
 if [ $RCT -ne 0 ]; then
-    tee_date "removing data files from output list"
+    tee_date "processing failed, removing data files from output list"
     rm output.txt
 fi
 echo "$LOCTXT $LGFN none" >> output.txt
 
+tee_date "Final ls"
+ls -l
 
-tee_date "cat output.txt"
-cat ouput.txt
-
-control_summary final
 
 if [ "$MOO_LOCAL" ]; then
     RCP=0

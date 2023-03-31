@@ -223,6 +223,22 @@ create_config() {
 # MOO_INPUT and add the file to a list at MOO_INPUTS
 #
 get_next_SAM_file() {
+
+    if [ -n "$MOO_LOCAL_INPUT" ]; then
+        export MOO_INPUT=""
+
+        for FN in $(echo $MOO_LOCAL_INPUT | tr "," " " )
+        do
+            if [[ ! "$MOO_INPUT_LIST" =~ "$FN" ]]; then
+                export MOO_INPUT="$FN"
+                export MOO_INPUT_LIST=${MOO_INPUT_LIST:+$MOO_INPUT_LIST,}$MOO_INPUT
+                break
+            fi
+        done
+
+        return 0
+    fi
+
     if ! command -v samweb > /dev/null 2>&1 ; then
         echo "ERROR - get_next_SAM_file called without samweb available"
         return 1
@@ -234,11 +250,14 @@ get_next_SAM_file() {
     local TEMP=$(samweb get-next-file $SAM_PROJECT $SAM_CONSUMER_ID 2>&1 )
     local TT=$?
 
-    if [ $TT -eq 0 ]; then
+    if [[ $TT -eq 0 ]]; then
         export MOO_INPUT="$TEMP"
-        export MOO_INPUT_LIST=${MOO_INPUT_LIST:+$MOO_INPUT_LIST,}$MOO_INPUT
+        if [ -n "$TEMP" ]; then
+            export MOO_INPUT_LIST=${MOO_INPUT_LIST:+$MOO_INPUT_LIST,}$MOO_INPUT
+        fi
     else
-        [ $MOO_VERBOSE -ge 1 ] && echo $TEMP
+        export MOO_INPUT=""
+        [ $MOO_VERBOSE -ge 1 ] && echo "get-next-file output: $TEMP"
     fi
 
     return $TT
@@ -252,6 +271,12 @@ get_next_SAM_file() {
 # if no argument, assume consumed
 #
 release_SAM_file() {
+
+    if [ -n "$MOO_LOCAL_INPUT" ]; then
+        unset MOO_INPUT
+        return 0
+    fi
+
     if ! command -v samweb > /dev/null 2>&1 ; then
         echo "ERROR - release_SAM_file called without samweb available"
         return 1
@@ -301,6 +326,8 @@ watchdog() {
 
     [ -z "$MU2E" ] && source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
     [ -z "$SETUP_IFDH" ] && setup ifdhc
+
+    ifdh mkdir_p $DD
 
     local T0=$( date +%s )
     local DT=0

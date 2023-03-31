@@ -2,6 +2,7 @@
 #
 # script to make a ups tarball
 # args: $1=version
+# the content of the tarball will be whatever is in this script's directory
 # tarball will be created in the cwd
 #
 VERSION="$1"
@@ -11,7 +12,9 @@ if [ ! "$VERSION" ]; then
 fi
 
 OWD=$PWD
-SDIR=$(dirname $(readlink -f $BASH_SOURCE)  | sed 's|/build||' )
+
+echo ${BASH_SOURCE}
+SDIR=$(readlink -f $(dirname ${BASH_SOURCE} )/.. )
 
 PDIR=$(mktemp -d)
 cd $PDIR
@@ -22,11 +25,11 @@ mkdir -p $VERSION
 cd $VERSION
 
 rsync --exclude "*~" --exclude "*__*"  \
-    -r $SDIR/bin $SDIR/Campaigns $SIDR/Util  .
+    -r $SDIR/bin $SDIR/Campaigns $SDIR/Util  .
 mkdir -p ups
 cd ups
 
-cat > dhtools.table <<EOL
+cat > OfflineOps.table <<EOL
 File    = table
 Product = OfflineOps
 
@@ -36,6 +39,8 @@ Product = OfflineOps
 Group:
 
 Flavor     = ANY
+  Action = flavorSetup
+
 
 Common:
   Action = setup
@@ -44,9 +49,8 @@ Common:
     prodDir()
     setupEnv()
     envSet(\${UPS_PROD_NAME_UC}_VERSION, $VERSION)
-    sourceRequired(\${UPS_PROD_DIR}/bin/dh_functions.sh,UPS_ENV)
     pathPrepend(PATH,\${UPS_PROD_DIR}/bin)
-    pathPrepend(PYTHONPATH,\${UPS_PROD_DIR}/python)
+    #pathPrepend(PYTHONPATH,\${UPS_PROD_DIR}/python)
     exeActionRequired(flavorSetup)
 
 End:
@@ -54,7 +58,7 @@ End:
 #*************************************************
 EOL
 
-# up to dhtools dir
+# up to OfflineOps dir
 cd ../..
 
 mkdir -p ${VERSION}.version
@@ -62,26 +66,21 @@ cd ${VERSION}.version
 
 cat > NULL <<EOL
 FILE = version
-PRODUCT = dhtools
+PRODUCT = OfflineOps
 VERSION = $VERSION
 
 FLAVOR = NULL
 QUALIFIERS = ""
-  PROD_DIR = dhtools/$VERSION
+  PROD_DIR = OfflineOps/$VERSION
   UPS_DIR = ups
-  TABLE_FILE = dhtools.table
+  TABLE_FILE = OfflineOps.table
 
-FLAVOR = NULL
-QUALIFIERS = "grid"
-  PROD_DIR = dhtools/$VERSION
-  UPS_DIR = ups
-  TABLE_FILE = dhtools.table
 EOL
 
 cd ../..
 
-tar -cjf $OWD/dhtools-${VERSION}.bz2 dhtools/${VERSION} dhtools/${VERSION}.version
-rm -rf $PDIR/dhtools
+tar -cjf $OWD/OfflineOps-${VERSION}.bz2 OfflineOps/${VERSION} OfflineOps/${VERSION}.version
+rm -rf $PDIR/OfflineOps
 rmdir $PDIR
 
 cd $OWD
