@@ -86,10 +86,10 @@ fi
 #
 # create a config string out of POMS, cfg and input versions
 #
-if [[ -z "$MOO_CAMPAIGN" && -n "$POMS4_CAMPAIGN_NAME" ]]; then
+if [ -n "$POMS4_CAMPAIGN_NAME" ]; then
     export MOO_CAMPAIGN="$POMS4_CAMPAIGN_NAME"
 fi
-if [[ -z "MOO_CAMPAIGN_STAGE" && -n "POMS4_CAMPAIGN_STAGE_NAME" ]]; then
+if [ -n "POMS4_CAMPAIGN_STAGE_NAME" ]; then
     export MOO_CAMPAIGN_STAGE=$POMS4_CAMPAIGN_STAGE_NAME
 fi
 
@@ -101,7 +101,7 @@ save_environment wrapper_end
 # run the executable script
 #
 
-tee_date start script $OFFLINEOPS_DIR/Campaigns/$MOO_SCRIPT
+tee_date "************ start script $OFFLINEOPS_DIR/Campaigns/$MOO_SCRIPT"
 $OFFLINEOPS_DIR/Campaigns/$MOO_SCRIPT
 RC=$?
 tee_date OfflineOps/wrapper exiting with RC=$RC
