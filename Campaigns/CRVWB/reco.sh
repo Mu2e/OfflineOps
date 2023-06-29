@@ -19,7 +19,7 @@ tee_date "args are: $@"
 
 setup mu2e
 setup CRVTeststand $MOO_CRVTESTSTAND
-muse setup Offline v10_20_00
+muse setup Offline v10_22_01
 setup -B mu2etools
 setup -B mu2efiletools
 setup -B sam_web_client
@@ -89,8 +89,8 @@ do
         parserCrv $SEQ
         RCT=$((RCT+$?))
 
-        tee_date "Running calibCrv $SEQ"
-        calibCrv $SEQ
+        tee_date "Running calibCrv -a -0.13 $SEQ"
+        calibCrv -a -0.13 $SEQ
         RCT=$((RCT+$?))
 
         FLAG=""
