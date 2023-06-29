@@ -113,8 +113,13 @@ node_summary() {
     echo "pwd: $PWD"
 
     if [ $VERBOSE -gt 0 ]; then
-        echo "df on system:"
-        df -h
+        if [ $VERBOSE -gt 1 ]; then
+            echo "df on system:"
+            df -h
+        else
+            echo "df on system (skipping cvmfs partitions):"
+            df -h | grep -v cvmfs
+        fi
 
         echo "ulimit:"
         ulimit -a
@@ -224,6 +229,12 @@ create_config() {
 #
 get_next_SAM_file() {
 
+    [ $MOO_VERBOSE -ge 1 ] && tee_date "starting get-next-file"
+
+    [ $MOO_VERBOSE -ge 2 ] && printenv | grep SAM
+
+    export MOO_INPUT=""
+
     if [ -n "$MOO_LOCAL_INPUT" ]; then
         export MOO_INPUT=""
 
@@ -240,27 +251,57 @@ get_next_SAM_file() {
     fi
 
     if ! command -v samweb > /dev/null 2>&1 ; then
-        echo "ERROR - get_next_SAM_file called without samweb available"
+        tee_date "ERROR - get_next_SAM_file called without samweb available"
         return 1
     fi
     if [[ -z "$SAM_PROJECT" || -z "$SAM_CONSUMER_ID" ]]; then
-        echo "ERROR - get_next_SAM_file called without SAM consumer environmentals"
+        tee_date "ERROR - get_next_SAM_file called without SAM consumer environmentals"
         return 1
     fi
-    local TEMP=$(samweb get-next-file $SAM_PROJECT $SAM_CONSUMER_ID 2>&1 )
+
+    local TMPS=$(mktemp)
+    local TMPE=$(mktemp)
+
+    samweb get-next-file $SAM_PROJECT $SAM_CONSUMER_ID 1>$TMPS 2>$TMPE
     local TT=$?
 
-    if [[ $TT -eq 0 ]]; then
-        export MOO_INPUT="$TEMP"
-        if [ -n "$TEMP" ]; then
-            export MOO_INPUT_LIST=${MOO_INPUT_LIST:+$MOO_INPUT_LIST,}$MOO_INPUT
+    local STDO=$(cat $TMPS)
+    local STDE=$(cat $TMPE)
+    rm -f $TMPS $TMPE
+
+    # if command timeout, TT=0 but output contains Traceback
+    local RC=0
+    if [ $TT -eq 0 ]; then
+        if [[ "$STDE" =~ "Traceback" ]]; then
+            # case of final timeout
+            RC=1
+        else
+            # case of a file delivered
+            # case of no more files (STDO="")
+            RC=0
         fi
     else
-        export MOO_INPUT=""
-        [ $MOO_VERBOSE -ge 1 ] && echo "get-next-file output: $TEMP"
+        RC=1
     fi
 
-    return $TT
+    if [[ $MOO_VERBOSE -ge 2 || $RC -ne 0 || -n "$STDE" ]]; then
+        echo "[$(date)] get-next-file returned:"
+        echo "stdout=$STDO"
+        echo "stderr=$STDE"
+        echo "command rc=$TT"
+    fi
+
+    if [ $RC -eq 0 ]; then
+        # blank STDO might just mean end of input files
+        export MOO_INPUT="$STDO"
+        if [ -n "$MOO_INPUT" ]; then
+            export MOO_INPUT_LIST=${MOO_INPUT_LIST:+$MOO_INPUT_LIST,}$MOO_INPUT
+        fi
+    fi
+
+    [ $MOO_VERBOSE -ge 1 ] && tee_date "returning get-next-file RC=$RC MOO_INPUT=$MOO_INPUT"
+
+    return $RC
 
 }
 

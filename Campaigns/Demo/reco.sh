@@ -10,8 +10,6 @@ RCT=0
 source /cvmfs/mu2e.opensciencegrid.org/bin/OfflineOps/functions.sh
 RCT=$((RCT+$?))
 
-tee_date "Starting Demo reco.sh"
-
 if [ ! "$OFFLINEOPS_DIR" ]; then
     echo "ERROR - OFFLINEOPS_DIR needs to be defined before this script runs"
     RCT=$((RCT+$?))
@@ -41,7 +39,7 @@ else
     LOCTXT=scratch
 fi
 
-control_summary exe
+control_summary start
 
 get_next_SAM_file
 RCT=$((RCT+$?))
@@ -67,11 +65,8 @@ if [[ $RCT -eq 0 && -n "$MOO_INPUT" ]]; then
     echo "services.DbService.version : $DBV" >> local.fcl
     echo "services.DbService.verbose : $DBE" >> local.fcl
 
-
     NEVARG=""
     [ "$MOO_FAKE" == "true" ] && NEVARG="-n 5"
-
-    tee_date "processing $MOO_INPUT"
 
     mu2e $NEVARG -s $MOO_INPUT -o $RAFN -c local.fcl
     RC=$?
@@ -100,7 +95,9 @@ if [ $RCT -ne 0 ]; then
     tee_date "removing data files from output list"
     rm output.txt
 fi
-echo "$LOCTXT $LGFN none" >> output.txt
+if [ "$LGFN" ]; then
+    echo "$LOCTXT $LGFN none" >> output.txt
+fi
 
 tee_date "Final ls"
 ls -l
@@ -112,7 +109,11 @@ control_summary final
 if [ "$MOO_LOCAL" ]; then
     RCP=0
 else
-    pushOutput output.txt
+    if [ -a output.txt ]; then
+        pushOutput output.txt
+    else
+        tee_date "skipping pushOutput, no files to move"
+    fi
     RCP=$?
 fi
 
