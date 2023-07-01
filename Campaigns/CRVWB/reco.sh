@@ -89,8 +89,8 @@ do
         parserCrv $SEQ
         RCT=$((RCT+$?))
 
-        tee_date "Running calibCrv -a -0.13 $SEQ"
-        calibCrv -a -0.13 $SEQ
+        tee_date "Running calibCrv $SEQ -a -0.13"
+        calibCrv $SEQ -a -0.13
         RCT=$((RCT+$?))
 
         FLAG=""
