@@ -15,6 +15,11 @@ source /cvmfs/mu2e.opensciencegrid.org/bin/OfflineOps/functions.sh
 
 tee_date Starting OfflineOps/wrapper.sh
 
+tee_date Check LANG
+printenv | grep LC_
+printenv LANG
+unset LC_CTYPE
+
 # always need to find setup
 source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
 

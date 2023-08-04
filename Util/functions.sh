@@ -361,12 +361,12 @@ release_SAM_file() {
 watchdog() {
 
     local TL=$1
-    [ -z "$TLIMIT" ] && TL=7200
+    [ -z "$TL" ] && TL=7200
 
     DD=/pnfs/mu2e/scratch/users/$GRID_USER/watchdog
 
     [ -z "$MU2E" ] && source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
-    [ -z "$SETUP_IFDH" ] && setup ifdhc
+    [ -z "$SETUP_IFDHC" ] && setup ifdhc
 
     ifdh mkdir_p $DD
 
@@ -399,3 +399,6 @@ watchdog() {
 
 
 }
+
+# so watchdog can be run in a subshell
+export -f watchdog
