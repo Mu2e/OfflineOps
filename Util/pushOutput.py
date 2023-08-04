@@ -457,6 +457,7 @@ def copyFile(dfile):
 
     localurl = "file://"+os.path.realpath(dfile.localfs)
 
+    rc = 999
     for itry, tsleep in enumerate(retries) :
         time.sleep(tsleep)
 
@@ -464,6 +465,7 @@ def copyFile(dfile):
             rc = ctx.filecopy(params, localurl, dfile.url)
             break
         except Exception as e:
+            rc = 1
             # gfal only raises generic errors, so have to parse the text
             message = str(e)
             # if the output file already exists, then this function is done
@@ -471,7 +473,7 @@ def copyFile(dfile):
                 teeDate(1,"WARNING - output file exists for {}/{}"\
                           .format(dfile.path,dfile.fn))
                 return 1
-            print("ERROR - copy failed for try {} for {}".\
+            teeDate(0,"ERROR - copy failed for try {} for {}".\
                   format(itry,dfile.url))
             print("message: "+message)
 
@@ -576,7 +578,7 @@ def declareSam(dfile):
     dfile.donesam = False
     dfile.samtime = -1
 
-    rc = 0
+    rc = 999
     for itry, tsleep in enumerate(retries) :
         time.sleep(tsleep)
         try :
@@ -597,6 +599,9 @@ def declareSam(dfile):
 
     if rc == 2 :
         teeDate(0,"ERROR - SAM declare retries exhausted for "+dfile.fn)
+        return 2
+    elif rc != 0 :
+        teeDate(0,"ERROR - SAM declare errors "+str(rc)+" for "+dfile.fn)
         return 2
 
     # must be ok so far, add location
@@ -758,7 +763,7 @@ def writeLog(dfile):
     ferr = os.path.expandvars("jsb_tmp/JOBSUB_ERR_FILE")
 
     if not os.path.exists(fout) :
-        teeDate(0,"ERROR - writeLog could not find {} " + fout)
+        teeDate(0,"ERROR - writeLog could not find " + fout)
         return 2
 
     with open(fn,"w") as f:
@@ -866,6 +871,8 @@ if __name__ == '__main__':
             line = f.readline()
 
     rcWrite = 0
+    rcRecover = 0
+    rcCheck = 0
     for dfile in dflist :
 
         #df = DataFile()
@@ -904,7 +911,6 @@ if __name__ == '__main__':
         # go into recovery algorithm
         teeDate(0,"INFO - running checkTimes")
         # check if previous output is recent or stale
-        rcCheck = 0
         for dfile in dflist :
             if dfile.isLog :
                 continue
@@ -912,7 +918,6 @@ if __name__ == '__main__':
             if rcCheck != 0 :
                 break
 
-        rcRecover = 0
         if rcCheck == 1 :
             # recent files from another job exist
             teeDate(0,"INFO - running rollback")
@@ -932,20 +937,35 @@ if __name__ == '__main__':
                 if rcRecover == 2 :
                     break
 
-    # always try to write a log file
+    # initial job rc, before writing log files
     rcJob = 0
-    if rcWrite == 0 or rcRecover == 0 :
-        teeDate(0,"Success status before log write")
+    if rcWrite == 0 :
+        # normal sucessful write
         rcJob = 0
+    elif rcWrite == 1 :
+        # found existing output files
+        if rcCheck == 0 :
+            # result of attempt to overwrite old files
+            rcJob = rcRecover
+        else :
+            # old files were not that old, no overwrite attempted
+            # this job must fail, to cause continued recoveries
+            rcJob = 3
     else :
-        teeDate(0,"ERROR status before log write rcWrite={} rcCheck={} rcRecover={}"
-                .format(rcWrite,rcCheck,rcRecover))
+        # error during nornmal write attempt
         rcJob = 2
+
+
+    teeDate(0,"pushOutput status before log write: " + str(rcJob))
 
     # always try to write the log
 
     for dfile in dflist :
         if dfile.isLog :
-            writeLog(dfile)
+            rc = writeLog(dfile)
+            if rc != 0 :
+                rcJob = rc
+
+    teeDate(0,"pushOutput status at exit: " + str(rcJob))
 
     sys.exit(rcJob)
