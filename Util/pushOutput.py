@@ -19,6 +19,7 @@ import calendar
 import json
 import subprocess
 import random
+import base64
 
 validActions = ["tape", "disk", "scratch", "sam"]
 
@@ -120,6 +121,52 @@ def teeDate(level,m):
         print(tm,file=sys.stderr)
     return
 
+#
+#
+#
+def getToken():
+    '''
+    Lookup bearer token file and return the encoded token string.
+    Search, in order
+       1. $BEARER_TOKEN
+       2. $BEARER_TOKEN_FILE
+       3. $XDG_RUNTIME_DIR/bt_u$UID
+
+    Returns:
+        token (str) : the coded token
+
+    Raises:
+        FileNotFoundError : for token file not found
+        RuntimeError : token was expired
+    '''
+
+    token = None
+    tokenFile = None
+    if 'BEARER_TOKEN' in os.environ :
+        token = os.environ['BEARER_TOKEN']
+    elif 'BEARER_TOKEN_FILE' in os.environ :
+        tokenFile = os.environ['BEARER_TOKEN_FILE']
+    elif 'XDG_RUNTIME_DIR' in os.environ :
+        tokenFile = os.environ['XDG_RUNTIME_DIR'] + "/bt_u" + str(os.getuid())
+
+    if token == None and tokenFile != None :
+        with open(tokenFile, 'r') as file:
+            token = file.read().replace('\n', '')
+
+    if token == None :
+        raise FileNotFoundError("token file not found")
+
+    token = token.replace("\n","")
+
+    subtoken = token.split(".")[1]
+    dectoken = base64.b64decode(subtoken+'==',altchars="_-").decode("utf-8")
+    ddtoken = json.loads(dectoken)
+
+    deltat = int(ddtoken['exp']) - int(time.time())
+    if deltat < 10 :
+        raise RuntimeError("token was expired")
+
+    return token
 
 #
 # fill the DataFile object from the input text file
@@ -254,6 +301,9 @@ def rmFile(dfile):
     dfile.copytime = -1
     dfile.dcacheinfo = {}
 
+    token = getToken()
+    ctx.set_opt_string("BEARER", "TOKEN", token)
+
     for itry, tsleep in enumerate(retries) :
         time.sleep(tsleep)
         try:
@@ -355,27 +405,20 @@ def computeCRC(filename):
 #
 def getDcacheInfo(dfile):
 
-    if 'X509_USER_PROXY' in os.environ :
-        cert = os.environ['X509_USER_PROXY']
-    else :
-        cert = "/tmp/x509up_u"+str(os.getuid())
-
-    if not os.path.exists(cert) :
-        teeDate(0,"ERROR - could not find x509 proxy at "+cert)
-        return 2
-
-    vdir = "/etc/grid-security/certificates"
+    token = getToken()
 
     dfs = "https://fndcadoor.fnal.gov:3880"
     sloc = "/api/v1/namespace/" + dfile.path[5:] + "/" + dfile.fn + \
            "?checksum=true&locality=true"
 
-    cot=ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-    cot.load_cert_chain(cert)
+    cot = ssl._create_unverified_context()
 
     conn = http.client.HTTPSConnection("fndcadoor.fnal.gov",
                         port=3880,context=cot)
-    conn.request("GET", sloc)
+
+    header = {"Authorization" : "Bearer "+token }
+
+    conn.request("GET", sloc, headers=header)
     res = conn.getresponse()
     #res = requests.get(url,cert=(cert,cert),verify=vdir,timeout=100)
     if res.status == 404 :
@@ -456,6 +499,9 @@ def copyFile(dfile):
     dfile.copytime = -1
 
     localurl = "file://"+os.path.realpath(dfile.localfs)
+
+    token = getToken()
+    ctx.set_opt_string("BEARER", "TOKEN", token)
 
     rc = 999
     for itry, tsleep in enumerate(retries) :
@@ -664,17 +710,13 @@ def checkTimes(dfile):
                 # OK to recover
                 rcfile = 0
 
-        # if rc==1 then, no output file, continue to check SAM
-
-    # if flow comes here, the file was written by this process,
-    # was not there, or was old, i.e. OK to recover
-
+    rcSAM = 0
     if dfile.donesam :
 
         mess = "Found this job wrote SAM record for " + dfile.fn
         teeDate(1,mess)
         # SAM record is also OK to recover
-        return 0
+        rcSAM = 0
 
     else :
         rc = getSamMetadata(dfile)
@@ -689,14 +731,23 @@ def checkTimes(dfile):
                 mess = "SAM record is {}s old, less than recoverTime for {}".\
                    format(deltaTime,dfile.fn)
                 teeDate(1,mess)
-                return 1
+                rcSAM = 1
             else :
                 mess = "SAM record is {}s old, more than recoverTime for {}".\
                    format(deltaTime,dfile.fn)
                 teeDate(1,mess)
-                return 0
+                rcSAM = 0
 
-    return 0
+    # rcFile and rcSAM must be either 0 (we wrote the file/record, 
+    # or we did not write it, but it is old, OK to recover) 
+    # or 1 (we did not write the the file/record, and it is recent,
+    # so not OK to recover yet)
+    if rcfile > rcSAM :
+        rc = rcfile
+    else :
+        rc = rcSAM
+
+    return rc
 
 #
 # this process is competing to write output,
@@ -815,14 +866,18 @@ if __name__ == '__main__':
     recoverDelay = 7200
 
     # gfal2 and samweb functions are methods of global objects
+
     ctx = gfal2.creat_context()
+    token = getToken()
+    ctx.set_opt_string("BEARER", "TOKEN", token)
+
     samweb = samweb_client.SAMWebClient()
 
     # default, normally take app name and verison from MOO_CONFIG
     appDefault = True
     appFamily="Production"
-    appName=None
-    appVersion=None
+    appName=""
+    appVersion=""
 
     # intentionaly fail at a rate given by MOO_FAIL/100
     failRate = 0.0
@@ -835,8 +890,8 @@ if __name__ == '__main__':
 
     parser.add_argument("filelist", metavar="file_of_files",
                         type=str, help="text file with list of files to transfer")
-    parser.add_argument("-v","--verbose", action="store_const",
-                        dest="verbose", default=1,const=None,
+    parser.add_argument("-v","--verbose", type=int,
+                        dest="verbose", default=1,choices=[0, 1, 2],
                         help="int, 0,1,2 for verbosity (default=1)")
     parser.add_argument("-a","--app_default", action="store_const",
                         dest="app_default", default=True, const=None,

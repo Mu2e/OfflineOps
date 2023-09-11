@@ -70,7 +70,9 @@ do
     CRFN=ntd.mu2e.${DES}.${MOO_CONFIG}.${SEQ}.root
     CPFN=etc.mu2e.${DES}_cali.${MOO_CONFIG}.${SEQ}.pdf
     CTFN=etc.mu2e.${DES}_cali.${MOO_CONFIG}.${SEQ}.txt
+    CNFN=ntd.mu2e.${DES}_cali.${MOO_CONFIG}.${SEQ}.root
     RRFN=rec.mu2e.${DES}.${MOO_CONFIG}.${SEQ}.root
+    RNFN=rec.mu2e.${DES}-noadc.${MOO_CONFIG}.${SEQ}.root
     RPFN=etc.mu2e.${DES}_reco.${MOO_CONFIG}.${SEQ}.pdf
     RTFN=etc.mu2e.${DES}_reco.${MOO_CONFIG}.${SEQ}.txt
 
@@ -80,7 +82,9 @@ do
         date > ntd.mu2e.${DES}.${CFG}.${SEQ}.root
         date > cal.mu2e.${DES}.${CFG}.${SEQ}.pdf
         date > cal.mu2e.${DES}.${CFG}.${SEQ}.txt
+        date > cal.mu2e.${DES}.${CFG}.${SEQ}.root
         date > rec.mu2e.${DES}.${CFG}.${SEQ}.root
+        date > rec2.mu2e.${DES}.${CFG}.${SEQ}.root
         date > rec.mu2e.${DES}.${CFG}.${SEQ}.pdf
         date > rec.mu2e.${DES}.${CFG}.${SEQ}.txt
     else
@@ -89,8 +93,8 @@ do
         parserCrv $SEQ
         RCT=$((RCT+$?))
 
-        tee_date "Running calibCrv $SEQ -a -0.13"
-        calibCrv $SEQ -a -0.13
+        tee_date "Running calibCrv $SEQ"
+        calibCrv $SEQ
         RCT=$((RCT+$?))
 
         FLAG=""
@@ -104,7 +108,9 @@ do
     mv ntd.mu2e.${DES}.${CFG}.${SEQ}.root $CRFN
     mv cal.mu2e.${DES}.${CFG}.${SEQ}.pdf  $CPFN
     mv cal.mu2e.${DES}.${CFG}.${SEQ}.txt  $CTFN
+    mv cal.mu2e.${DES}.${CFG}.${SEQ}.root $CNFN
     mv rec.mu2e.${DES}.${CFG}.${SEQ}.root $RRFN
+    mv rec2.mu2e.${DES}.${CFG}.${SEQ}.root $RNFN
     mv rec.mu2e.${DES}.${CFG}.${SEQ}.pdf  $RPFN
     mv rec.mu2e.${DES}.${CFG}.${SEQ}.txt  $RTFN
 
@@ -113,7 +119,9 @@ do
     echo "$LOCROOT $CRFN  parents_${BNAME}" >> output.txt
     echo "$LOCTXT  $CPFN  parents_${BNAME}" >> output.txt
     echo "$LOCTXT  $CTFN  parents_${BNAME}" >> output.txt
+    echo "$LOCTXT  $CNFN  parents_${BNAME}" >> output.txt
     echo "$LOCROOT $RRFN  parents_${BNAME}" >> output.txt
+    echo "$LOCROOT $RNFN  parents_${BNAME}" >> output.txt
     echo "$LOCTXT  $RPFN  parents_${BNAME}" >> output.txt
     echo "$LOCTXT  $RTFN  parents_${BNAME}" >> output.txt
 
