@@ -84,15 +84,15 @@ node_summary() {
         voms-proxy-info -exists > /dev/null 2>&1
         RC=$?
         if [ $RC -eq 0 ] ; then
-            echo "voms_proxy: OK"
+            echo "voms proxy: OK"
         else
-            echo "voms_proxy: NOT OK"
+            echo "voms proxy: NOT OK"
         fi
         if [[ $RC -ne 0 || VERBOSE -gt 0 ]]; then
             voms-proxy-info
         fi
     else
-        echo "kerberos: could not find Klist"
+        echo "voms proxy: could not find voms-proxy-info"
     fi
     printenv | grep X509
 
@@ -107,6 +107,8 @@ node_summary() {
         if [[ $RC -ne 0 || VERBOSE -gt 0 ]]; then
             httokendecode
         fi
+    else
+        echo "token: could not find httokendecode"
     fi
     printenv | grep TOKEN
 
@@ -363,7 +365,14 @@ watchdog() {
     local TL=$1
     [ -z "$TL" ] && TL=7200
 
-    DD=/pnfs/mu2e/scratch/users/$GRID_USER/watchdog
+    local ULOC="mu2e"
+    if [ "$GRID_USER" ]; then
+        ULOC="$GRID_USER"
+    elif [ "$USER" ]; then
+        ULOC="$USER"
+    fi
+
+    DD=/pnfs/mu2e/scratch/users/$ULOC/watchdog
 
     [ -z "$MU2E" ] && source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
     [ -z "$SETUP_IFDHC" ] && setup ifdhc

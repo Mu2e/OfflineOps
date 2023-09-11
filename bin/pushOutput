@@ -23,6 +23,7 @@ setup sam_web_client
 export PYTHONPATH=$PYTHONPATH:/usr/lib64/python3.6/site-packages:/usr/lib/python3.6/site-packages
 export SAMWEB_HTTP_HANDLER=urllib
 #which python
+unset X509_USER_PROXY
 python $SCRIPT_DIR/../Util/pushOutput.py "$@"
 
 
