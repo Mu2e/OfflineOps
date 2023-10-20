@@ -19,7 +19,7 @@ tee_date "args are: $@"
 
 setup mu2e
 setup CRVTeststand $MOO_CRVTESTSTAND
-muse setup Offline v10_22_01
+muse setup Offline v10_23_02
 setup -B mu2etools
 setup -B mu2efiletools
 setup -B sam_web_client
@@ -99,6 +99,10 @@ do
 
         FLAG=""
         [[ "$BNAME" =~ "crvled" ]] && FLAG="-p"
+
+        [[ "$BNAME" =~ "crvaging-010" ]] && FLAG="$FLAG --channelMap $CRVTESTSTAND_FQ_DIR/eventdisplay/channelMapCrvAging010.txt"
+        [[ "$BNAME" =~ "crvaging-012" ]] && FLAG="$FLAG --channelMap $CRVTESTSTAND_FQ_DIR/eventdisplay/channelMapCrvAging012.txt"
+
 
         tee_date "Running recoCrv $SEQ $FLAG"
         recoCrv $SEQ $FLAG
