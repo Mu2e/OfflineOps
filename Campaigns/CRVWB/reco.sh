@@ -17,9 +17,11 @@ source /cvmfs/mu2e.opensciencegrid.org/bin/OfflineOps/functions.sh
 tee_date "Starting CRVWB reco.sh"
 tee_date "args are: $@"
 
+RCT=0
+
 setup mu2e
 setup CRVTeststand $MOO_CRVTESTSTAND
-muse setup Offline v10_23_02
+muse setup Offline v10_27_00
 setup -B mu2etools
 setup -B mu2efiletools
 setup -B sam_web_client
@@ -48,8 +50,8 @@ fi
 control_summary exe
 
 get_next_SAM_file
+RCT=$((RCT+$?))
 
-RCT=0
 TOPSEQ="000000_00000000"
 
 while [ "$MOO_INPUT" ]
@@ -98,11 +100,15 @@ do
         RCT=$((RCT+$?))
 
         FLAG=""
-        [[ "$BNAME" =~ "crvled" ]] && FLAG="-p"
-
-        [[ "$BNAME" =~ "crvaging-010" ]] && FLAG="$FLAG --channelMap $CRVTESTSTAND_FQ_DIR/eventdisplay/channelMapCrvAging010.txt"
-        [[ "$BNAME" =~ "crvaging-012" ]] && FLAG="$FLAG --channelMap $CRVTESTSTAND_FQ_DIR/eventdisplay/channelMapCrvAging012.txt"
-
+        FCF=$(echo $BNAME | awk -F. '{print $4}')
+        [[ "$FCF" =~ "crvled" ]] && FLAG="-p"
+        # if aging config >= 10, add a map file
+        if [[ "$FCF" =~ "crvaging" ]]; then
+            ADN=$(echo $FCF | awk -F- '{print $2}')
+            if [[ "$ADN" > "009" ]]; then
+                FLAG="$FLAG --channelMap $CRVTESTSTAND_FQ_DIR/eventdisplay/channelMapCrvAging${ADN}.txt"
+            fi
+        fi
 
         tee_date "Running recoCrv $SEQ $FLAG"
         recoCrv $SEQ $FLAG
@@ -132,6 +138,7 @@ do
     if [ $RCT -eq 0 ]; then
         release_SAM_file consumed
         get_next_SAM_file
+        RCT=$((RCT+$?))
     else
         release_SAM_file skipped
     fi
