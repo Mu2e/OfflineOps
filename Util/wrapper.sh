@@ -20,6 +20,14 @@ printenv | grep LC_
 printenv LANG
 unset LC_CTYPE
 
+tee_date Check BEARER_TOKEN
+if [ "$BEARER_TOKEN" ]; then
+    echo "found BEARER_TOKEN set, unsetting it"
+    unset BEARER_TOKEN
+else
+    echo "found BEARER_TOKEN is not set"
+fi
+
 # always need to find setup
 source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
 
@@ -42,9 +50,13 @@ save_environment wrapper_start
 #
 if [[ "$MOO_SOURCE" =~ "/" ]]; then
     tee_date fetching Offline Ops from $MOO_SOURCE
-    setup ifdhc
     LFN=$(basename $MOO_SOURCE)
-    ifdh cp --cp_maxretries=1 $MOO_SOURCE $LFN
+    (
+        if ! command -v ifdh >& /dev/null ; then
+            muse setup ops
+        fi
+        ifdh cp --cp_maxretries=1 $MOO_SOURCE $LFN
+    )
     tee_date untar OfflineOps source $LFN
     tar -xf $LFN
     rm -f $LFN
@@ -70,6 +82,21 @@ if [ "$PRODUCTS" ]; then
     #unsetup ups
     #unset PRODUCTS
 fi
+
+#
+# undo whatever spack exists
+#
+if [ "$SPACK_ROOT" ]; then
+    spack unload -a
+    unset SPACK_ROOT
+    unset SPACK_ENV
+    unset SPACK_ENV_VIEW
+fi
+
+
+# allow mu2einit to run again
+unset MU2E
+
 
 tee_date "mv CONDOR_DIR_INPUT to cwd"
 if [ "$CONDOR_DIR_INPUT" ]; then

@@ -2,7 +2,6 @@
 #! /usr/bin/python
 #from __future__ import absolute_import
 #from __future__ import print_function
-import gfal2
 import argparse
 import sys
 import os
@@ -290,7 +289,6 @@ def fillDataFile(line):
 #/pnfs/mu2e/persistent/datasets/phy-etc/etc/mu2e/test/000_000/txt/16/14
 #/pnfs/mu2e/scratch/datasets/phy-etc/etc/mu2e/test/000_000/txt/16/14
 
-
 #
 # return success, deleted or not found, (0), or fail (2)
 #
@@ -302,21 +300,24 @@ def rmFile(dfile):
     dfile.dcacheinfo = {}
 
     token = getToken()
-    ctx.set_opt_string("BEARER", "TOKEN", token)
+    env = {"BEARER_TOKEN" : token}
+    cmd = f"gfal-rm -t 300 {dfile.url}"
 
     for itry, tsleep in enumerate(retries) :
         time.sleep(tsleep)
-        try:
-            stat = ctx.unlink(dfile.url)
-            teeDate(1,"Removed {}/{}".format(dfile.path,dfile.fn))
+        result = subprocess.run(cmd, shell=True, timeout=320,
+                    encoding="utf-8",capture_output=True, env=env)
+        teeDate(1,"Removed {}/{}".format(dfile.path,dfile.fn))
+
+        if result.returncode == 0 :
             return 0
-        except Exception as e:
-            message = str(e)
-            if "File not found" in message :
-                return 0
+        elif result.returncode == 2 and "MISSING" in result.stdout :
+            return 0
+        else :
             print("ERROR - rm failed for try {} for {}"\
                   .format(itry,dfile.url))
-            print("message: "+message)
+            print(result.stdout)
+            print(result.stderr)
 
     return 2
 
@@ -489,36 +490,31 @@ def copyFile(dfile):
     if failRate > 0. and random.uniform(0.0,4.0) < failRate :
         return 2
 
-    # Set gfal transfer parameters
-    params = ctx.transfer_parameters()
-    params.overwrite = False
-    params.set_checksum = False
-    params.timeout = 300
-
     dfile.donecopy = False
     dfile.copytime = -1
 
     localurl = "file://"+os.path.realpath(dfile.localfs)
 
     token = getToken()
-    ctx.set_opt_string("BEARER", "TOKEN", token)
+
+    env = {"BEARER_TOKEN" : token}
+    cmd = "gfal-copy --parent --timeout 1000"
+    cmd = cmd + " " + localurl + " " + dfile.url
 
     rc = 999
     for itry, tsleep in enumerate(retries) :
         time.sleep(tsleep)
 
-        try:
-            rc = ctx.filecopy(params, localurl, dfile.url)
+        result = subprocess.run(cmd, shell=True, timeout=1100,
+                    encoding="utf-8", capture_output=True, env=env)
+        rc = result.returncode
+        if rc == 0 :
             break
-        except Exception as e:
-            rc = 1
-            # gfal only raises generic errors, so have to parse the text
-            message = str(e)
-            # if the output file already exists, then this function is done
-            if "file exists" in message :
-                teeDate(1,"WARNING - output file exists for {}/{}"\
-                          .format(dfile.path,dfile.fn))
-                return 1
+        elif "exists" in result.stderr :
+            teeDate(1,"WARNING - output file exists for {}/{}"\
+                    .format(dfile.path,dfile.fn))
+            return 1
+        else :
             teeDate(0,"ERROR - copy failed for try {} for {}".\
                   format(itry,dfile.url))
             print("message: "+message)
@@ -865,12 +861,7 @@ if __name__ == '__main__':
     runTime = int( time.time() )
     recoverDelay = 7200
 
-    # gfal2 and samweb functions are methods of global objects
-
-    ctx = gfal2.creat_context()
-    token = getToken()
-    ctx.set_opt_string("BEARER", "TOKEN", token)
-
+    # samweb functions are methods of global objects
     samweb = samweb_client.SAMWebClient()
 
     # default, normally take app name and verison from MOO_CONFIG

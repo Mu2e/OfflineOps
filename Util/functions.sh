@@ -47,17 +47,21 @@ node_summary() {
         echo "cvmfs: ERROR on simple ls"
     fi
 
-    if [[ $RC -ne 0 || $VERBOSE -gt 0 ]]; then
-        if command -v  cvmfs_config ; then
-            cvmfs_config stat -v fermilab.opensciencegrid.org
-            cvmfs_config stat -v mu2e.opensciencegrid.org
+    if [ $VERBOSE -gt 1 ]; then
+        if [[ $RC -ne 0 || $VERBOSE -gt 0 ]]; then
+            if command -v  cvmfs_config ; then
+                cvmfs_config stat -v fermilab.opensciencegrid.org
+                cvmfs_config stat -v mu2e.opensciencegrid.org
+            fi
         fi
     fi
 
-    if [ "$(rpm -q -a | grep zstd)" ]; then
-        echo "rpm_check: has art 3.6 rpms"
-    else
-        echo "rpm_check: ERROR - does not have art 3.6 rpms"
+    if [ $VERBOSE -gt 1 ]; then
+        if [ "$(rpm -q -a | grep zstd)" ]; then
+            echo "rpm_check: has art 3.6 rpms"
+        else
+            echo "rpm_check: ERROR - does not have art 3.6 rpms"
+        fi
     fi
 
     echo "GRID_USER: $GRID_USER"
@@ -69,7 +73,11 @@ node_summary() {
         if [ $RC -eq 0 ] ; then
             echo "kerberos: OK"
         else
-            echo "kerberos: NOT OK"
+            if [ "$GRID_USER" ]; then
+                echo "kerberos: NOT OK (as expected for grid jobs)"
+            else
+                echo "kerberos: NOT OK"
+            fi
         fi
         # kerberos not expected on a grid node
         if [[ ( $RC -ne 0 && ! "$GRID_USER" ) || VERBOSE -gt 0 ]]; then
@@ -105,7 +113,7 @@ node_summary() {
             echo "token: NOT OK"
         fi
         if [[ $RC -ne 0 || VERBOSE -gt 0 ]]; then
-            httokendecode
+            httokendecode -H
         fi
     else
         echo "token: could not find httokendecode"
@@ -183,6 +191,14 @@ save_environment() {
         if command -v ups 2>&1 > /dev/null ; then
             echo "********* ups active"
             ups active
+        fi
+        if command -v spack 2>&1 > /dev/null ; then
+            echo "********* spack variables"
+            echo "SPACK_ROOT=$SPACK_ROOT"
+            echo "SPACK_ENV=$SPACK_ENV"
+            echo "SPACK_ENV_VIEW=$SPACK_ENV_VIEW"
+            echo "spack loaded:"
+            spack find -lv --loaded
         fi
         echo "********* ls"
         /bin/ls -al
@@ -358,7 +374,6 @@ release_SAM_file() {
 #
 # $1 = optional time limit in s
 # outdir assumed: /pnfs/mu2e/scratch/users/$GRID_USER/watchdog
-# ifdh assumed setup
 
 watchdog() {
 
@@ -374,10 +389,17 @@ watchdog() {
 
     DD=/pnfs/mu2e/scratch/users/$ULOC/watchdog
 
-    [ -z "$MU2E" ] && source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
-    [ -z "$SETUP_IFDHC" ] && setup ifdhc
+    source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
+    if ! command -v ifdh >& /dev/null ; then
+        if [ "$MU2E_SPACK" ]; then
+            muse setup ops
+        else
+            setup ifdhc
+        fi
+    fi
 
-    ifdh mkdir_p $DD
+    #ifdh mkdir_p $DD
+    gfal-mkdir -p $DD
 
     local T0=$( date +%s )
     local DT=0
