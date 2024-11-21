@@ -19,16 +19,14 @@ tee_date "args are: $@"
 
 RCT=0
 
-setup mu2e
-setup CRVTeststand $MOO_CRVTESTSTAND
-muse setup Offline v10_27_00
-setup -B mu2etools
-setup -B mu2efiletools
-setup -B sam_web_client
-setup -B ifdhc
+source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
+printenv
+muse setup ops
+printenv
+spack load $MOO_CRVTESTSTAND
 
 # modify CRV exe control to use local directory
-cat $CRVTESTSTAND_FQ_DIR/config.txt | \
+cat $CRVTESTSTAND_DIR/config.txt | \
 awk '{
   if(index($1,"crv")==1) {
     print $1" ./"
@@ -77,6 +75,7 @@ do
     RNFN=rec.mu2e.${DES}-noadc.${MOO_CONFIG}.${SEQ}.root
     RPFN=etc.mu2e.${DES}_reco.${MOO_CONFIG}.${SEQ}.pdf
     RTFN=etc.mu2e.${DES}_reco.${MOO_CONFIG}.${SEQ}.txt
+    DQMN=ntd.mu2e.${DES}-DQM.${MOO_CONFIG}-file.${SEQ}.root
 
     [ $RCT -ne 0 ] && break
 
@@ -89,6 +88,7 @@ do
         date > rec2.mu2e.${DES}.${CFG}.${SEQ}.root
         date > rec.mu2e.${DES}.${CFG}.${SEQ}.pdf
         date > rec.mu2e.${DES}.${CFG}.${SEQ}.txt
+        date > dqm.mu2e.${DES}.${CFG}.$SEQ.root
     else
 
         tee_date "Running parseCrv $SEQ"
@@ -123,6 +123,7 @@ do
     mv rec2.mu2e.${DES}.${CFG}.${SEQ}.root $RNFN
     mv rec.mu2e.${DES}.${CFG}.${SEQ}.pdf  $RPFN
     mv rec.mu2e.${DES}.${CFG}.${SEQ}.txt  $RTFN
+    mv dqm.mu2e.${DES}.${CFG}.$SEQ.root $DQMN
 
     echo $BNAME > parents_${BNAME}
 
@@ -134,6 +135,7 @@ do
     echo "$LOCROOT $RNFN  parents_${BNAME}" >> output.txt
     echo "$LOCTXT  $RPFN  parents_${BNAME}" >> output.txt
     echo "$LOCTXT  $RTFN  parents_${BNAME}" >> output.txt
+    echo "$LOCTXT  $DQMN  parents_${BNAME}" >> output.txt
 
     if [ $RCT -eq 0 ]; then
         release_SAM_file consumed
@@ -156,6 +158,9 @@ echo "$LOCTXT $LGFN none" >> output.txt
 tee_date "Final ls"
 ls -l
 
+tee_date "decode token"
+httokendecode -H
+save_environment final_env_check
 
 if [ "$MOO_LOCAL" ]; then
     RCP=0

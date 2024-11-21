@@ -20,7 +20,7 @@ source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
 setup sam_web_client
 #setup root v6_26_06 -q e20:p3913:prof
 # for gfal2
-export PYTHONPATH=$PYTHONPATH:/usr/lib64/python3.6/site-packages:/usr/lib/python3.6/site-packages
+#export PYTHONPATH=$PYTHONPATH:/usr/lib64/python3.6/site-packages:/usr/lib/python3.6/site-packages
 export SAMWEB_HTTP_HANDLER=urllib
 #which python
 unset X509_USER_PROXY
