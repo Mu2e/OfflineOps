@@ -859,7 +859,7 @@ if __name__ == '__main__':
     verbose = 1
     retries = [0,10,30]
     runTime = int( time.time() )
-    recoverDelay = 7200
+    recoverDelay = 3600
 
     # samweb functions are methods of global objects
     samweb = samweb_client.SAMWebClient()
