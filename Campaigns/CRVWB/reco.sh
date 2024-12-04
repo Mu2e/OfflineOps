@@ -22,7 +22,7 @@ RCT=0
 source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
 printenv
 muse setup ops
-printenv
+#printenv
 spack load $MOO_CRVTESTSTAND
 
 # modify CRV exe control to use local directory
@@ -100,16 +100,23 @@ do
         RCT=$((RCT+$?))
 
         FLAG=""
+        MAPFILE=""
         FCF=$(echo $BNAME | awk -F. '{print $4}')
         [[ "$FCF" =~ "crvled" ]] && FLAG="-p"
         # if aging config >= 10, add a map file
         if [[ "$FCF" =~ "crvaging" ]]; then
             ADN=$(echo $FCF | awk -F- '{print $2}')
             if [[ "$ADN" > "009" ]]; then
-                FLAG="$FLAG --channelMap $CRVTESTSTAND_FQ_DIR/eventdisplay/channelMapCrvAging${ADN}.txt"
+                MAPFILE="$CRVTESTSTAND_DIR/eventdisplay/channelMapCrvAging${ADN}.txt"
+                if [ ! -e $MAPFILE ]; then
+                    tee_date "Warning - map file expected, but not found: $MAPFILE"
+                else
+                    FLAG="$FLAG --channelMap $MAPFILE"
+                fi
             fi
         fi
 
+        # do not fail if map file not found - check removed on request
         tee_date "Running recoCrv $SEQ $FLAG"
         recoCrv $SEQ $FLAG
         RCT=$((RCT+$?))
