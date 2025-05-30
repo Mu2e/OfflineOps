@@ -20,9 +20,13 @@ tee_date "args are: $@"
 RCT=0
 
 source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
-printenv
+#printenv
 muse setup ops
 #printenv
+# reset to the spack install where this package is
+unset SPACK_ENV
+unset SPACK_ENV_VIEW
+source /cvmfs/mu2e.opensciencegrid.org/spackages/241207/spack/setup-env.sh
 spack load $MOO_CRVTESTSTAND
 
 # modify CRV exe control to use local directory
