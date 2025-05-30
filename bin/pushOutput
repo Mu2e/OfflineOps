@@ -3,34 +3,66 @@
 # fix environment and python for pushOutput.py
 # which writes files to dcache and declares them to SAM
 #
+
+debugprint() {
+
+echo "[$(date)] PO_DEBUG ready printenv"
+printenv
+echo "[$(date)] PO_DEBUG ready httokendecode"
+httokendecode -H
+echo "[$(date)] PO_DEBUG ready voms"
+voms-proxy-info
+echo "[$(date)] PO_DEBUG ls token"
+ls -l $BEARER_TOKEN_FILE
+echo "[$(date)] PO_DEBUG token file content"
+cat $BEARER_TOKEN_FILE
+echo "[$(date)] PO_DEBUG all ls"
+ls -al
+if [ "$BEARER_TOKEN" ]; then
+    echo "[$(date)] PO_DEBUG unsetting BEARER_TOKEN"
+    unset BEARER_TOKEN
+else
+    echo "[$(date)] PO_DEBUG BEARER_TOKEN was not set"
+fi
+
+}
+
+
 SCRIPT_DIR=$( dirname "${BASH_SOURCE[0]}" )
 
-#unset LD_LIBRARY_PATH
-#unset LD_PRELOAD
-#unset GFAL_PLUGIN_DIR
-# unset GFAL_CONFIG_DIR
-#unset PYTHONHOME
-#unset PYTHONPATH
+#     older setuo = _1
+#  #[ -z "$MU2E" ] && 
+#  source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
+#  #setup python v3_9_13
+#  [ -z "$MUSE_WORK_DIR" ] && muse setup Offline
+#  [ -z "$SETUP_MU2ETOOLS" ] && setup mu2etools
+#  setup sam_web_client
+#  #setup root v6_26_06 -q e20:p3913:prof
+#  # for gfal2
+#  #export PYTHONPATH=$PYTHONPATH:/usr/lib64/python3.6/site-packages:/usr/lib/python3.6/site-packages
+#  export SAMWEB_HTTP_HANDLER=urllib
+#  #which python
+#  unset X509_USER_PROXY
 
-#[ -z "$MU2E" ] && 
-source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
-#setup python v3_9_13
-[ -z "$MUSE_WORK_DIR" ] && muse setup Offline
-[ -z "$SETUP_MU2ETOOLS" ] && setup mu2etools
-setup sam_web_client
-#setup root v6_26_06 -q e20:p3913:prof
-# for gfal2
-#export PYTHONPATH=$PYTHONPATH:/usr/lib64/python3.6/site-packages:/usr/lib/python3.6/site-packages
-export SAMWEB_HTTP_HANDLER=urllib
-#which python
+# new 5/9 after python 3.10 debugging
 unset X509_USER_PROXY
+source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
+
+if ! command -v mdh >& /dev/null; then
+    muse setup ops
+fi
+if ! command -v mu2e >& /dev/null; then
+    muse setup SimJob
+fi
+if ! command -v printJson >& /dev/null; then
+    setup mu2etools
+fi
+
+debugprint >&2
+
 python $SCRIPT_DIR/../Util/pushOutput.py "$@"
+RC=$?
 
+echo "[$(date)] PO_DEBUG done RC=$RC"
 
-# simpler working method
-#unset LD_LIBRARY_PATH
-#unset LD_PRELOAD
-#unset GFAL_PLUGIN_DIR
-#unset PYTHONHOME
-#export PYTHONPATH=/cvmfs/fermilab.opensciencegrid.org/products/common/db/../prd/sam_web_client/v3_2/NULL/python
-#/usr/bin/python2 $SCRIPT_DIR/../Util/pushOutput.py "$@"
+exit $RC
